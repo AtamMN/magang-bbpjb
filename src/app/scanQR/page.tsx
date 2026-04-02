@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Textarea } from "@/components/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SimpleModal, Textarea } from "@/components/ui";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import {
   checkTodayAttendance,
@@ -41,20 +42,29 @@ function extractScanText(result: unknown): string {
 
 export default function ScanQrPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser, userRole, loading } = useAuth();
+  const scannerContainerRef = useRef<HTMLDivElement | null>(null);
+  const scanLockRef = useRef(false);
 
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [lastScanned, setLastScanned] = useState("");
   const [showDinasLuarForm, setShowDinasLuarForm] = useState(false);
   const [dinasLuarType, setDinasLuarType] = useState<"masuk" | "keluar">("masuk");
   const [keterangan, setKeterangan] = useState("");
+  const [debugScanPayload, setDebugScanPayload] = useState("");
+  const [debugScannedAt, setDebugScannedAt] = useState("");
   const [message, setMessage] = useState<ScannerMessage>({
     type: "info",
-    text: "Siapkan QR resmi PRESENSI_2025 atau KELUAR_2025.",
+    text: "Tekan Mulai Scan Presensi untuk memulai pemindaian.",
   });
+
+  const debugMode = useMemo(() => {
+    const value = searchParams.get("debug");
+    return value === "1" || value === "true";
+  }, [searchParams]);
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -102,6 +112,42 @@ export default function ScanQrPage() {
     return "border-blue-200 bg-blue-50 text-blue-700";
   }, [message.type]);
 
+  const stopCameraStream = useCallback(() => {
+    const container = scannerContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const videos = container.querySelectorAll("video");
+    videos.forEach((video) => {
+      const stream = video.srcObject;
+      if (stream instanceof MediaStream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      video.srcObject = null;
+    });
+  }, []);
+
+  const stopScanningSession = useCallback(() => {
+    stopCameraStream();
+    setProcessing(false);
+    setScanning(false);
+    setSelectedDeviceId("");
+    setDevices([]);
+  }, [stopCameraStream]);
+
+  const handleStopScanning = useCallback(() => {
+    scanLockRef.current = false;
+    stopScanningSession();
+  }, [stopScanningSession]);
+
+  useEffect(() => {
+    return () => {
+      scanLockRef.current = false;
+      stopCameraStream();
+    };
+  }, [stopCameraStream]);
+
   const processAttendance = async (
     qrType: "PRESENSI_2025" | "KELUAR_2025",
     note = "",
@@ -141,7 +187,6 @@ export default function ScanQrPage() {
         type: "success",
         text: `Presensi MASUK berhasil pada ${formatTimestampWIB(saveResult.timestamp)} WIB.`,
       });
-      setScanning(false);
       return;
     }
 
@@ -175,11 +220,10 @@ export default function ScanQrPage() {
       type: "success",
       text: `Presensi KELUAR berhasil pada ${formatTimestampWIB(saveResult.timestamp)} WIB.`,
     });
-    setScanning(false);
   };
 
   const handleScan = async (result: unknown) => {
-    if (processing) {
+    if (processing || scanLockRef.current) {
       return;
     }
 
@@ -188,25 +232,28 @@ export default function ScanQrPage() {
       return;
     }
 
-    if (text === lastScanned) {
-      return;
+    if (debugMode) {
+      setDebugScanPayload(text);
+      setDebugScannedAt(new Date().toISOString());
     }
 
-    if (text !== "PRESENSI_2025" && text !== "KELUAR_2025") {
-      setMessage({ type: "error", text: "QR tidak valid. Gunakan QR resmi Presensi." });
-      setScanning(false);
-      return;
-    }
-
+    scanLockRef.current = true;
     setProcessing(true);
-    setLastScanned(text);
 
-    await processAttendance(text as "PRESENSI_2025" | "KELUAR_2025");
+    try {
+      if (text !== "PRESENSI_2025" && text !== "KELUAR_2025") {
+        setMessage({ type: "error", text: "QR tidak valid. Gunakan QR resmi Presensi." });
+        return;
+      }
 
-    window.setTimeout(() => {
-      setLastScanned("");
-      setProcessing(false);
-    }, 1800);
+      await processAttendance(text as "PRESENSI_2025" | "KELUAR_2025");
+    } catch (error) {
+      console.error("Failed to process scan", error);
+      setMessage({ type: "error", text: "Terjadi kesalahan saat memproses scan." });
+    } finally {
+      scanLockRef.current = false;
+      stopScanningSession();
+    }
   };
 
   const handleSubmitDinasLuar = async () => {
@@ -219,6 +266,7 @@ export default function ScanQrPage() {
     const qrType = dinasLuarType === "masuk" ? "PRESENSI_2025" : "KELUAR_2025";
     await processAttendance(qrType, `[Dinas Luar] ${keterangan.trim()}`);
     setKeterangan("");
+    setDinasLuarType("masuk");
     setShowDinasLuarForm(false);
     setProcessing(false);
   };
@@ -229,34 +277,50 @@ export default function ScanQrPage() {
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 md:px-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <CardTitle>Scan QR Presensi</CardTitle>
-              <CardDescription>
-                Login sebagai <strong>{currentUser.email}</strong> ({userRole?.role || "guest"}).
-              </CardDescription>
-            </div>
-            <Badge variant="info">WIB</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className={`rounded-lg border px-4 py-3 text-sm ${messageStyle}`}>{message.text}</div>
-        </CardContent>
-      </Card>
-
       <Card variant="elevated">
         <CardHeader>
-          <CardTitle>Kontrol Presensi</CardTitle>
-          <CardDescription>
+          <div className="mb-4 flex items-start justify-between gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/dashboard")}
+              className="inline-flex items-center gap-1.5 border-slate-200 text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Kembali
+            </Button>
+            <Badge variant="info">WIB</Badge>
+          </div>
+          <div>
+            <CardTitle>Scan QR Presensi</CardTitle>
+            <CardDescription>
+              Login sebagai <strong>{currentUser.email}</strong> ({userRole?.role || "guest"}).
+            </CardDescription>
+          </div>
+          <CardDescription className="mt-2">
             Gunakan scan QR untuk presensi normal atau form dinas luar bila tanpa QR.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className={`rounded-lg border px-4 py-3 text-sm ${messageStyle}`}>{message.text}</div>
+
+          {debugMode ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">Mode Debug Aktif</p>
+              <p className="mt-1 text-xs text-amber-800">
+                Isi QR terakhir: {debugScanPayload || "Belum ada hasil scan."}
+              </p>
+              <p className="mt-1 text-xs text-amber-700">
+                Waktu scan: {debugScannedAt ? new Date(debugScannedAt).toLocaleString("id-ID") : "-"}
+              </p>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-3">
             <Button
               onClick={() => {
+                scanLockRef.current = false;
+                setProcessing(false);
                 setMessage({ type: "info", text: "Mode scan aktif. Arahkan kamera ke QR." });
                 setScanning(true);
               }}
@@ -266,16 +330,41 @@ export default function ScanQrPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setShowDinasLuarForm((prev) => !prev)}
+              onClick={() => setShowDinasLuarForm(true)}
               disabled={processing}
             >
-              {showDinasLuarForm ? "Tutup Form Dinas Luar" : "Presensi Dinas Luar"}
+              Presensi Dinas Luar
             </Button>
           </div>
 
-          {showDinasLuarForm ? (
-            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-800">Form Dinas Luar</p>
+          <SimpleModal
+            open={showDinasLuarForm}
+            title="Form Presensi Dinas Luar"
+            onClose={() => {
+              setShowDinasLuarForm(false);
+              setKeterangan("");
+              setDinasLuarType("masuk");
+            }}
+            actions={
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDinasLuarForm(false);
+                    setKeterangan("");
+                    setDinasLuarType("masuk");
+                  }}
+                  disabled={processing}
+                >
+                  Batal
+                </Button>
+                <Button onClick={handleSubmitDinasLuar} disabled={processing}>
+                  Submit Dinas Luar
+                </Button>
+              </div>
+            }
+          >
+            <div className="space-y-4">
               <div className="flex gap-4 text-sm">
                 <label className="inline-flex cursor-pointer items-center gap-2">
                   <input
@@ -300,11 +389,8 @@ export default function ScanQrPage() {
                 value={keterangan}
                 onChange={(event) => setKeterangan(event.target.value)}
               />
-              <Button onClick={handleSubmitDinasLuar} disabled={processing}>
-                Submit Dinas Luar
-              </Button>
             </div>
-          ) : null}
+          </SimpleModal>
 
           {scanning ? (
             <div className="space-y-4 rounded-xl border border-slate-200 p-4">
@@ -323,8 +409,9 @@ export default function ScanQrPage() {
                 </select>
               </div>
 
-              <div className="relative mx-auto h-[360px] w-full max-w-md overflow-hidden rounded-xl border border-slate-200">
+              <div ref={scannerContainerRef} className="relative mx-auto h-[360px] w-full max-w-md overflow-hidden rounded-xl border border-slate-200">
                 <QrScanner
+                  key={`${scanning}-${selectedDeviceId}`}
                   onScan={handleScan}
                   onError={(error: unknown) => console.error("Scan error:", error)}
                   constraints={
@@ -337,10 +424,18 @@ export default function ScanQrPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button variant="destructive" onClick={() => setScanning(false)} disabled={processing}>
+                <Button variant="destructive" onClick={handleStopScanning} disabled={processing}>
                   Berhenti Scan
                 </Button>
-                <Button variant="ghost" onClick={() => router.push("/dashboard")}>Kembali Dashboard</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    handleStopScanning();
+                    router.push("/dashboard");
+                  }}
+                >
+                  Kembali Dashboard
+                </Button>
               </div>
             </div>
           ) : null}
