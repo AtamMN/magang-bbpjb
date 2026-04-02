@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #00509d;
+  --primary-foreground: #ffffff;
+  --secondary: #fdc500;
+  --secondary-foreground: #1f2937;
+
+  --background: #eef3f8;
+  --foreground: #1f2937;
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+
+  --border: #d9e2ec;
+  --input: #d9e2ec;
+  --ring: #00509d;
+
+  --muted: #94a3b8;
+  --muted-foreground: #64748b;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --accent: #fdc500;
+  --accent-foreground: #1f2937;
+
+  --sidebar-bg: #00509d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-hover: #003d7a;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(253 197 0 / 12%), transparent 30%),
+    radial-gradient(circle at 100% 0%, rgb(0 80 157 / 10%), transparent 35%),
+    linear-gradient(180deg, #f7fafc 0%, #eef3f8 45%, #eaf1f7 100%);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.surface-card {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 95%);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(to right, rgb(148 163 184 / 10%) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(148 163 184 / 10%) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.35s ease-out forwards;
+}
