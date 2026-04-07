@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { useAuth } from "@/lib/contexts/AuthContext";
 
 export default function LoginPage() {
@@ -58,10 +59,9 @@ export default function LoginPage() {
               onChange={(event) => setEmail(event.target.value)}
               required
             />
-            <Input
-              type="password"
+            <PasswordInput
               label="Password"
-              placeholder="********"
+              placeholder="Masukkan password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required

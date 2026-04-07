@@ -70,28 +70,37 @@ async function checkUserRole(email: string): Promise<RoleInfo | null> {
   }
 
   const normalizedEmail = normalizeEmail(email);
+  console.log("[AuthContext] Checking role for email:", normalizedEmail);
+
   for (const roleCollection of ROLE_COLLECTIONS) {
     const roleRef = ref(db, `accounts/${roleCollection.key}`);
     const snapshot = await get(roleRef);
 
     if (!snapshot.exists()) {
+      console.log(`[AuthContext] No data in accounts/${roleCollection.key}`);
       continue;
     }
 
     const roleData = snapshot.val() as Record<string, Record<string, unknown>>;
+    console.log(`[AuthContext] Found data in accounts/${roleCollection.key}:`, Object.keys(roleData));
+
     const matched = Object.values(roleData).find((candidate) => {
       const candidateEmail = normalizeEmail(candidate.email);
+      console.log(`[AuthContext] Comparing ${candidateEmail} === ${normalizedEmail}`);
       return candidateEmail === normalizedEmail;
     });
 
     if (matched) {
+      const resolvedRole = normalizeRole(matched.role, roleCollection.role);
+      console.log("[AuthContext] Found match! Resolved role:", resolvedRole, "Raw matched data:", matched);
       return {
-        role: normalizeRole(matched.role, roleCollection.role),
+        role: resolvedRole,
         roleData: matched,
       };
     }
   }
 
+  console.log("[AuthContext] No role match found for email:", normalizedEmail);
   return null;
 }
 

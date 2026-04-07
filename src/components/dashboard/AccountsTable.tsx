@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SimpleModal } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import useUserInfo from "@/hooks/useUserInfo";
 import type { AccountRecord, UserRoleType } from "@/types/auth";
 import { toast } from "sonner";
-
-const ROLE_OPTIONS: UserRoleType[] = ["admin", "user", "intern", "mentor"];
 
 function formatCreatedAt(createdAt?: number) {
   if (!createdAt) {
@@ -60,6 +59,26 @@ export default function AccountsTable() {
 
   const canManage = userRole?.role === "sadmin";
   const isTrialUser = (currentUser?.email || "").toLowerCase() === "trial@trial.com";
+
+  /**
+   * Calculate available roles based on current user's role
+   * Sadmin: all roles, Admin: admin/user/intern/mentor
+   */
+  const availableRoles = useMemo(() => {
+    if (!userRole) {
+      return [];
+    }
+
+    if (userRole.role === "sadmin") {
+      return ["sadmin", "admin", "user", "intern", "mentor"] as UserRoleType[];
+    }
+
+    if (userRole.role === "admin") {
+      return ["admin", "user", "intern", "mentor"] as UserRoleType[];
+    }
+
+    return [];
+  }, [userRole]);
 
   const filteredAccounts = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -193,7 +212,7 @@ export default function AccountsTable() {
 
     setChangingRole(true);
     try {
-      await updateRole(pendingRoleChange.account.id, pendingRoleChange.nextRole);
+      await updateRole(pendingRoleChange.account.id, pendingRoleChange.nextRole, userRole?.role);
       toast.success("Role akun berhasil diperbarui.");
       setRoleConfirmOpen(false);
       setPendingRoleChange(null);
@@ -323,7 +342,10 @@ export default function AccountsTable() {
                             }}
                             className="h-9 rounded-md border border-slate-300 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00509D] disabled:cursor-not-allowed disabled:bg-slate-100"
                           >
-                            {[account.role, ...ROLE_OPTIONS.filter((role) => role !== account.role)].map((role) => (
+                            {[
+                              ...(availableRoles.includes(account.role) ? [account.role] : []),
+                              ...availableRoles.filter((role) => role !== account.role),
+                            ].map((role) => (
                               <option key={`${account.id}-${role}`} value={role}>
                                 {role}
                               </option>
@@ -435,9 +457,9 @@ export default function AccountsTable() {
             value={registerForm.email}
             onChange={(event) => setRegisterForm((prev) => ({ ...prev, email: event.target.value }))}
           />
-          <Input
+          <PasswordInput
             label="Password"
-            type="password"
+            placeholder="Masukkan password"
             value={registerForm.password}
             onChange={(event) => setRegisterForm((prev) => ({ ...prev, password: event.target.value }))}
           />
@@ -450,7 +472,7 @@ export default function AccountsTable() {
               }
               className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00509D]"
             >
-              {ROLE_OPTIONS.map((role) => (
+              {availableRoles.map((role) => (
                 <option key={role} value={role}>
                   {role}
                 </option>
@@ -500,9 +522,8 @@ export default function AccountsTable() {
             value={editForm.email}
             onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
           />
-          <Input
+          <PasswordInput
             label="Password Baru"
-            type="password"
             placeholder="Kosongkan jika tidak diganti"
             value={editForm.password}
             onChange={(event) => setEditForm((prev) => ({ ...prev, password: event.target.value }))}
@@ -516,7 +537,7 @@ export default function AccountsTable() {
               }
               className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00509D]"
             >
-              {ROLE_OPTIONS.map((role) => (
+              {availableRoles.map((role) => (
                 <option key={role} value={role}>
                   {role}
                 </option>

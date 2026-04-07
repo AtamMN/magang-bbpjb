@@ -30,7 +30,16 @@ function getTimestampWIB() {
 }
 
 export function formatTimestampWIB(timestamp: string) {
-  return formatTime(new Date(timestamp));
+  if (!timestamp || typeof timestamp !== "string") {
+    return "-";
+  }
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return formatTime(date);
 }
 
 export async function checkTodayAttendance(userId: string): Promise<{

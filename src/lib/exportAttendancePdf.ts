@@ -1,5 +1,7 @@
 import type { AttendanceViewRecord } from "@/hooks/useAttendanceRecords";
 import { formatTimestampWIB } from "@/lib/firebase/attendance";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface ExportAttendancePdfOptions {
   includeIdentity: boolean;
@@ -39,6 +41,13 @@ function buildDateRangeText(dateStart?: string, dateEnd?: string) {
   return "Semua tanggal";
 }
 
+function formatPresenceTime(value?: string) {
+  if (!value || new Date(value).getTime() <= 0) {
+    return "-";
+  }
+  return `${formatTimestampWIB(value)} WIB`;
+}
+
 export async function exportAttendancePdf(
   records: AttendanceViewRecord[],
   options: ExportAttendancePdfOptions,
@@ -46,25 +55,6 @@ export async function exportAttendancePdf(
   if (!records.length) {
     throw new Error("Tidak ada data untuk diekspor.");
   }
-
-  const [{ default: pdfMake }, { default: pdfFonts }] = await Promise.all([
-    import("pdfmake/build/pdfmake"),
-    import("pdfmake/build/vfs_fonts"),
-  ]);
-
-  const resolvedPdfMake = pdfMake as unknown as {
-    vfs?: Record<string, string>;
-    createPdf: (docDefinition: Record<string, unknown>) => {
-      download: (fileName: string) => void;
-    };
-  };
-
-  const resolvedFonts = pdfFonts as unknown as {
-    pdfMake?: { vfs?: Record<string, string> };
-    vfs?: Record<string, string>;
-  };
-
-  resolvedPdfMake.vfs = resolvedFonts.pdfMake?.vfs || resolvedFonts.vfs || {};
 
   const sortedRecords = [...records].sort((left, right) => right.date.localeCompare(left.date));
 
@@ -87,8 +77,8 @@ export async function exportAttendancePdf(
         record.date,
         record.name || "-",
         record.email || "-",
-        record.masuk ? `${formatTimestampWIB(record.masuk)} WIB` : "-",
-        record.keluar ? `${formatTimestampWIB(record.keluar)} WIB` : "-",
+        formatPresenceTime(record.masuk),
+        formatPresenceTime(record.keluar),
         calculateDuration(record.masuk, record.keluar),
         record.keteranganMasuk || "-",
         record.keteranganKeluar || "-",
@@ -97,70 +87,49 @@ export async function exportAttendancePdf(
 
     return [
       record.date,
-      record.masuk ? `${formatTimestampWIB(record.masuk)} WIB` : "-",
-      record.keluar ? `${formatTimestampWIB(record.keluar)} WIB` : "-",
+      formatPresenceTime(record.masuk),
+      formatPresenceTime(record.keluar),
       calculateDuration(record.masuk, record.keluar),
       record.keteranganMasuk || "-",
       record.keteranganKeluar || "-",
     ];
   });
 
-  const tableBody = [headers, ...bodyRows];
-  const dateRangeText = buildDateRangeText(options.dateStart, options.dateEnd);
+  const doc = new jsPDF({
+    orientation: "landscape",
+    unit: "pt",
+    format: "a4",
+  });
 
-  const documentDefinition = {
-    pageOrientation: "landscape",
-    pageMargins: [24, 24, 24, 24],
-    content: [
-      { text: "Rekap Presensi Magang BBPJB", style: "title" },
-      {
-        columns: [
-          {
-            width: "*",
-            text: [
-              { text: "Periode: ", bold: true },
-              dateRangeText,
-            ],
-          },
-          {
-            width: "auto",
-            text: [
-              { text: "Total Record: ", bold: true },
-              String(records.length),
-            ],
-          },
-        ],
-        margin: [0, 8, 0, 0],
-      },
-      {
-        text: [
-          { text: "Diekspor oleh: ", bold: true },
-          options.exportedBy || "Sistem",
-        ],
-        margin: [0, 2, 0, 10],
-      },
-      {
-        table: {
-          headerRows: 1,
-          widths: options.includeIdentity
-            ? [60, 90, 120, 55, 55, 40, "*", "*"]
-            : [70, 70, 70, 45, "*", "*"],
-          body: tableBody,
-        },
-        layout: "lightHorizontalLines",
-      },
-    ],
-    defaultStyle: {
-      fontSize: 9,
-    },
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Rekap Presensi Magang BBPJB", 24, 28);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Periode: ${buildDateRangeText(options.dateStart, options.dateEnd)}`, 24, 46);
+  doc.text(`Total Record: ${records.length}`, 24, 60);
+  doc.text(`Diekspor oleh: ${options.exportedBy || "Sistem"}`, 24, 74);
+
+  autoTable(doc, {
+    startY: 86,
+    head: [headers],
+    body: bodyRows,
+    margin: { top: 86, right: 24, bottom: 24, left: 24 },
+    theme: "grid",
     styles: {
-      title: {
-        fontSize: 14,
-        bold: true,
-      },
+      font: "helvetica",
+      fontSize: 8,
+      cellPadding: 4,
+      valign: "middle",
     },
-  };
+    headStyles: {
+      fillColor: [2, 132, 199],
+      textColor: 255,
+      fontStyle: "bold",
+    },
+  });
 
   const fileSuffix = new Date().toISOString().slice(0, 10);
-  resolvedPdfMake.createPdf(documentDefinition).download(`rekap-presensi-${fileSuffix}.pdf`);
+  doc.save(`rekap-presensi-${fileSuffix}.pdf`);
 }

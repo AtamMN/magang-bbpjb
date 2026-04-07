@@ -32,6 +32,36 @@ const ROLE_TO_BUCKET: Record<UserRoleType, string> = {
   mentor: "mentors",
 };
 
+/**
+ * Role hierarchy (higher = more authority):
+ * sadmin > admin > user > intern/mentor
+ */
+const ROLE_HIERARCHY: Record<UserRoleType, number> = {
+  sadmin: 4,
+  admin: 3,
+  user: 2,
+  intern: 1,
+  mentor: 1,
+};
+
+function canChangeRoleTo(currentUserRole: UserRoleType, targetRole: UserRoleType): boolean {
+  const currentHierarchy = ROLE_HIERARCHY[currentUserRole];
+  const targetHierarchy = ROLE_HIERARCHY[targetRole];
+
+  // Sadmin can change to any role
+  if (currentUserRole === "sadmin") {
+    return true;
+  }
+
+  // Admin can only change to roles at their level or below
+  if (currentUserRole === "admin") {
+    return targetHierarchy <= currentHierarchy;
+  }
+
+  // Other roles cannot change anyone's role
+  return false;
+}
+
 interface RawAccountData {
   name?: string;
   email?: string;
@@ -163,9 +193,18 @@ export default function useUserInfo(currentUser: AppUser | null) {
     return null;
   }
 
-  async function updateRole(accountId: string, newRole: UserRoleType) {
+  async function updateRole(accountId: string, newRole: UserRoleType, currentUserRole?: UserRoleType) {
     if (!db) {
       throw new Error("Database belum dikonfigurasi.");
+    }
+
+    // Validate permission if currentUserRole is provided
+    if (currentUserRole && !canChangeRoleTo(currentUserRole, newRole)) {
+      throw new Error(
+        currentUserRole === "admin"
+          ? `Admin tidak dapat mengubah role ke ${newRole}. Hanya dapat mengubah ke admin, user, intern, atau mentor.`
+          : "Anda tidak memiliki izin untuk mengubah role pengguna.",
+      );
     }
 
     const account = await resolveAccountById(accountId);

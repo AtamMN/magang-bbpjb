@@ -102,8 +102,8 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="hidden w-72 min-h-screen flex-col bg-[#00509D] text-white lg:flex">
-      <div className="border-b border-white/10 p-6">
+    <aside className="hidden w-72 h-screen flex-col bg-[#00509D] text-white overflow-hidden lg:flex">
+      <div className="border-b border-white/10 p-6 flex-shrink-0">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#FDC500] text-lg font-bold text-[#00509D]">
             M
@@ -115,7 +115,7 @@ export function Sidebar() {
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-2 p-4">
+      <nav className="flex-1 space-y-2 p-4 overflow-y-auto">
         {visibleNavItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
@@ -136,7 +136,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-white/10 p-4">
+      <div className="border-t border-white/10 p-4 flex-shrink-0">
         <div className="mb-3 rounded-lg bg-white/10 p-3">
           <p className="truncate text-sm font-semibold">{currentUser?.displayName || "Pengguna"}</p>
           <p className="truncate text-xs text-white/70">{currentUser?.email || "-"}</p>

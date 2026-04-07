@@ -8,11 +8,11 @@ export default function DashboardLayout({
 }>) {
   return (
     <RoleProtectedRoute allowedRoles={["sadmin", "admin", "user", "intern", "mentor"]}>
-      <div className="flex min-h-screen bg-[#eef3f8]">
+      <div className="flex h-screen overflow-hidden bg-[#eef3f8]">
         <Sidebar />
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col overflow-hidden">
           <DashboardHeader />
-          <main className="flex-1 p-4 pb-24 md:p-6 md:pb-6">{children}</main>
+          <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6 md:pb-6">{children}</main>
         </div>
         <MobileBottomNav />
       </div>
