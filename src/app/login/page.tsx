@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@/components/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
 import { useAuth } from "@/lib/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { currentUser, login, isDemoMode } = useAuth();
+  const { currentUser, login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,10 +41,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card variant="elevated" className="w-full max-w-md">
         <CardHeader className="space-y-3">
-          <div className="flex items-center justify-between">
-            <CardTitle>Masuk</CardTitle>
-            {isDemoMode ? <Badge variant="warning">Demo Mode</Badge> : <Badge variant="info">Firebase Mode</Badge>}
-          </div>
+          <CardTitle>Masuk</CardTitle>
           <CardDescription>
             Gunakan akun Presensi Anda untuk mengakses dashboard magang.
           </CardDescription>

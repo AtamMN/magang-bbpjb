@@ -13,7 +13,7 @@ import TrialAttendanceTable from "@/components/dashboard/TrialAttendanceTable";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { currentUser, loading, userRole, isDemoMode } = useAuth();
+  const { currentUser, loading, userRole } = useAuth();
   const { userInfo, loadingUser } = useUserInfo(currentUser);
   const { records, loadingAttendance, privileged } = useAttendanceRecords(
     currentUser,
@@ -103,7 +103,6 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {isDemoMode ? <Badge variant="warning">Mode Demo</Badge> : <Badge variant="success">Mode Firebase</Badge>}
             <Badge variant="info">WIB</Badge>
           </div>
         </div>

@@ -1,10 +1,36 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { formatDate } from "@/lib/utils";
 
 export function DashboardHeader() {
+  const router = useRouter();
+  const { currentUser, userRole, logout } = useAuth();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const displayName = currentUser?.displayName || userRole?.roleData?.name || "Pengguna";
+  const displayEmail = currentUser?.email || "-";
+  const roleLabel = userRole?.role || "guest";
+  const profileInitial = String(displayName || "P").trim().charAt(0).toUpperCase() || "P";
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      router.push("/login");
+    } finally {
+      setIsLoggingOut(false);
+      setIsProfileOpen(false);
+    }
+  };
 
   return (
     <header className="border-b border-slate-200 bg-white/90 px-4 py-4 backdrop-blur md:px-6">
@@ -38,7 +64,10 @@ export function DashboardHeader() {
         <div className="flex items-center gap-3">
           <div className="relative">
             <button
-              onClick={() => setIsNotificationOpen((prev) => !prev)}
+              onClick={() => {
+                setIsNotificationOpen((prev) => !prev);
+                setIsProfileOpen(false);
+              }}
               className="relative rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
             >
               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,6 +100,37 @@ export function DashboardHeader() {
                     <p className="mt-1 text-xs text-slate-500">Kemarin</p>
                   </div>
                 </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="relative lg:hidden">
+            <button
+              onClick={() => {
+                setIsProfileOpen((prev) => !prev);
+                setIsNotificationOpen(false);
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+              aria-label="Buka menu profil"
+            >
+              {profileInitial}
+            </button>
+
+            {isProfileOpen ? (
+              <div className="absolute right-0 top-12 z-20 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
+                  <p className="truncate text-xs text-slate-500">{displayEmail}</p>
+                  <p className="mt-1 text-xs uppercase tracking-wide text-[#00509D]">{roleLabel}</p>
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="mt-3 flex w-full items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoggingOut ? "Keluar..." : "Keluar"}
+                </button>
               </div>
             ) : null}
           </div>

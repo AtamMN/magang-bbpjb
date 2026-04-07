@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
     );
 
-    return { ok: true, message: "Mode demo aktif karena Firebase belum dikonfigurasi." };
+    return { ok: true, message: "Login berhasil." };
   }, []);
 
   const logout = useCallback(async () => {
