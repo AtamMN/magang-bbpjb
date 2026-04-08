@@ -40,6 +40,11 @@ function extractScanText(result: unknown): string {
   return "";
 }
 
+function findRearCameraDevice(devices: MediaDeviceInfo[]): MediaDeviceInfo | undefined {
+  const rearCameraPattern = /back|rear|environment|belakang|world|ultra|wide/i;
+  return devices.find((device) => rearCameraPattern.test(device.label || ""));
+}
+
 export default function ScanQrPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -90,8 +95,13 @@ export default function ScanQrPage() {
         const mediaDevices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = mediaDevices.filter((device) => device.kind === "videoinput");
         setDevices(videoDevices);
+
+        // Keep facingMode fallback as default unless a rear camera can be identified.
         if (videoDevices.length && !selectedDeviceId) {
-          setSelectedDeviceId(videoDevices[0].deviceId);
+          const rearCamera = findRearCameraDevice(videoDevices);
+          if (rearCamera?.deviceId) {
+            setSelectedDeviceId(rearCamera.deviceId);
+          }
         }
       } catch (error) {
         console.error("Failed to enumerate camera devices", error);
