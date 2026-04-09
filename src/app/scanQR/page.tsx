@@ -50,6 +50,7 @@ export default function ScanQrPage() {
   const searchParams = useSearchParams();
   const { currentUser, userRole, loading } = useAuth();
   const scannerContainerRef = useRef<HTMLDivElement | null>(null);
+  const cameraCardRef = useRef<HTMLDivElement | null>(null);
   const scanLockRef = useRef(false);
 
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -111,6 +112,12 @@ export default function ScanQrPage() {
 
     getVideoDevices();
   }, [scanning, selectedDeviceId]);
+
+  useEffect(() => {
+    if (scanning && cameraCardRef.current) {
+      cameraCardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [scanning]);
 
   const messageStyle = useMemo(() => {
     if (message.type === "success") {
@@ -326,26 +333,76 @@ export default function ScanQrPage() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={() => {
-                scanLockRef.current = false;
-                setProcessing(false);
-                setMessage({ type: "info", text: "Mode scan aktif. Arahkan kamera ke QR." });
-                setScanning(true);
-              }}
-              disabled={processing}
-            >
-              Mulai Scan Presensi
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowDinasLuarForm(true)}
-              disabled={processing}
-            >
-              Presensi Dinas Luar
-            </Button>
-          </div>
+          {scanning ? (
+            <div ref={cameraCardRef} className="space-y-4 rounded-xl border border-slate-200 p-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Pilih Kamera</label>
+                <select
+                  value={selectedDeviceId}
+                  onChange={(event) => setSelectedDeviceId(event.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00509D] md:max-w-md"
+                >
+                  {devices.map((device, index) => (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.label || `Kamera ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div ref={scannerContainerRef} className="relative mx-auto h-[360px] w-full max-w-md overflow-hidden rounded-xl border border-slate-200">
+                <QrScanner
+                  key={`${scanning}-${selectedDeviceId}`}
+                  onScan={handleScan}
+                  onError={(error: unknown) => console.error("Scan error:", error)}
+                  constraints={
+                    selectedDeviceId
+                      ? { deviceId: { exact: selectedDeviceId } }
+                      : { facingMode: "environment" }
+                  }
+                  styles={{ container: { width: "100%", height: "100%" } }}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button variant="destructive" onClick={handleStopScanning} disabled={processing}>
+                  Berhenti Scan
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    handleStopScanning();
+                    router.push("/dashboard");
+                  }}
+                >
+                  Kembali Dashboard
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {!scanning ? (
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => {
+                  scanLockRef.current = false;
+                  setProcessing(false);
+                  setMessage({ type: "info", text: "Mode scan aktif. Arahkan kamera ke QR." });
+                  setScanning(true);
+                }}
+                disabled={processing}
+              >
+                Mulai Scan Presensi
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDinasLuarForm(true)}
+                disabled={processing}
+              >
+                Presensi Dinas Luar
+              </Button>
+            </div>
+          ) : null}
 
           <SimpleModal
             open={showDinasLuarForm}
@@ -401,54 +458,6 @@ export default function ScanQrPage() {
               />
             </div>
           </SimpleModal>
-
-          {scanning ? (
-            <div className="space-y-4 rounded-xl border border-slate-200 p-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Pilih Kamera</label>
-                <select
-                  value={selectedDeviceId}
-                  onChange={(event) => setSelectedDeviceId(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00509D] md:max-w-md"
-                >
-                  {devices.map((device, index) => (
-                    <option key={device.deviceId} value={device.deviceId}>
-                      {device.label || `Kamera ${index + 1}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div ref={scannerContainerRef} className="relative mx-auto h-[360px] w-full max-w-md overflow-hidden rounded-xl border border-slate-200">
-                <QrScanner
-                  key={`${scanning}-${selectedDeviceId}`}
-                  onScan={handleScan}
-                  onError={(error: unknown) => console.error("Scan error:", error)}
-                  constraints={
-                    selectedDeviceId
-                      ? { deviceId: { exact: selectedDeviceId } }
-                      : { facingMode: "environment" }
-                  }
-                  styles={{ container: { width: "100%", height: "100%" } }}
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button variant="destructive" onClick={handleStopScanning} disabled={processing}>
-                  Berhenti Scan
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    handleStopScanning();
-                    router.push("/dashboard");
-                  }}
-                >
-                  Kembali Dashboard
-                </Button>
-              </div>
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     </main>
