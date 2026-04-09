@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/firebaseAdmin";
+import { requireAuthorizedRole } from "@/lib/server/requireAuthorizedRole";
 
 export async function POST(req: Request) {
-  if (!adminAuth || !adminDb) {
-    return NextResponse.json(
-      { error: "Firebase admin belum dikonfigurasi." },
-      { status: 503 },
-    );
+  const access = await requireAuthorizedRole(req, ["sadmin"]);
+  if (!access.ok) {
+    return access.response;
   }
 
   try {

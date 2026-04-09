@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/firebaseAdmin";
+import { requireAuthorizedRole } from "@/lib/server/requireAuthorizedRole";
 
 export async function POST(req: Request) {
-  if (!adminAuth || !adminDb) {
+  const access = await requireAuthorizedRole(req, ["sadmin"]);
+  if (!access.ok) {
+    return access.response;
+  }
+
+  const authClient = adminAuth;
+  const database = adminDb;
+  if (!authClient || !database) {
     return NextResponse.json(
       { error: "Firebase admin belum dikonfigurasi." },
       { status: 503 },
@@ -19,13 +27,13 @@ export async function POST(req: Request) {
 
     const role = body.role || "user";
 
-    const userRecord = await adminAuth.createUser({
+    const userRecord = await authClient.createUser({
       email: body.email,
       password: body.password,
       displayName: body.name,
     });
 
-    await adminDb.ref(`accounts/users/${userRecord.uid}`).set({
+    await database.ref(`accounts/users/${userRecord.uid}`).set({
       name: body.name,
       email: body.email,
       role,

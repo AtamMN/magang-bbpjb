@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { get, onValue, ref, remove, set, update } from "firebase/database";
-import { db } from "@/lib/firebase/firebase";
+import { auth, db } from "@/lib/firebase/firebase";
 import type { AccountRecord, AppUser, UserRoleType } from "@/types/auth";
 
 interface UserInfo {
@@ -122,6 +122,19 @@ export default function useUserInfo(currentUser: AppUser | null) {
   const [hydratedKey, setHydratedKey] = useState<string>("");
 
   const expectedKey = currentUser?.email && db ? currentUser.email.toLowerCase() : "";
+
+  const buildAuthorizedHeaders = async () => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    const token = await auth?.currentUser?.getIdToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
+  };
 
   useEffect(() => {
     if (!currentUser?.email || !db) {
@@ -262,7 +275,7 @@ export default function useUserInfo(currentUser: AppUser | null) {
     try {
       const response = await fetch("/api/admin/delete-account", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await buildAuthorizedHeaders(),
         body: JSON.stringify({ uid: accountId }),
       });
 

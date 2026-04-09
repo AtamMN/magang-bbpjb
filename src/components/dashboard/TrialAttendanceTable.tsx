@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SimpleModal } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, SimpleModal } from "@/components/ui";
 
 interface TrialRecord {
   id: string;
@@ -122,9 +122,6 @@ export default function TrialAttendanceTable() {
       <Card>
         <CardHeader>
           <CardTitle>Trial Dashboard</CardTitle>
-          <CardDescription>
-            Mode trial memakai data lokal untuk simulasi alur presensi tanpa menyentuh RTDB.
-          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <Input

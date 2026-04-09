@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SimpleModal, Textarea } from "@/components/ui";
 import { useAuth } from "@/lib/contexts/AuthContext";
@@ -47,7 +47,6 @@ function findRearCameraDevice(devices: MediaDeviceInfo[]): MediaDeviceInfo | und
 
 export default function ScanQrPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { currentUser, userRole, loading } = useAuth();
   const scannerContainerRef = useRef<HTMLDivElement | null>(null);
   const cameraCardRef = useRef<HTMLDivElement | null>(null);
@@ -60,17 +59,10 @@ export default function ScanQrPage() {
   const [showDinasLuarForm, setShowDinasLuarForm] = useState(false);
   const [dinasLuarType, setDinasLuarType] = useState<"masuk" | "keluar">("masuk");
   const [keterangan, setKeterangan] = useState("");
-  const [debugScanPayload, setDebugScanPayload] = useState("");
-  const [debugScannedAt, setDebugScannedAt] = useState("");
   const [message, setMessage] = useState<ScannerMessage>({
     type: "info",
     text: "Tekan Mulai Scan Presensi untuk memulai pemindaian.",
   });
-
-  const debugMode = useMemo(() => {
-    const value = searchParams.get("debug");
-    return value === "1" || value === "true";
-  }, [searchParams]);
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -249,11 +241,6 @@ export default function ScanQrPage() {
       return;
     }
 
-    if (debugMode) {
-      setDebugScanPayload(text);
-      setDebugScannedAt(new Date().toISOString());
-    }
-
     scanLockRef.current = true;
     setProcessing(true);
 
@@ -320,18 +307,6 @@ export default function ScanQrPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className={`rounded-lg border px-4 py-3 text-sm ${messageStyle}`}>{message.text}</div>
-
-          {debugMode ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p className="font-semibold">Mode Debug Aktif</p>
-              <p className="mt-1 text-xs text-amber-800">
-                Isi QR terakhir: {debugScanPayload || "Belum ada hasil scan."}
-              </p>
-              <p className="mt-1 text-xs text-amber-700">
-                Waktu scan: {debugScannedAt ? new Date(debugScannedAt).toLocaleString("id-ID") : "-"}
-              </p>
-            </div>
-          ) : null}
 
           {scanning ? (
             <div ref={cameraCardRef} className="space-y-4 rounded-xl border border-slate-200 p-4">

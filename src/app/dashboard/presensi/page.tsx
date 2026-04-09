@@ -324,9 +324,6 @@ export default function PresensiPage() {
       <Card>
         <CardHeader>
           <CardTitle>Data Presensi</CardTitle>
-          <CardDescription>
-            Data ditarik langsung dari RTDB attendance dengan filter rentang tanggal.
-          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">

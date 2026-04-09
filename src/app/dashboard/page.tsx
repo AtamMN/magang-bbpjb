@@ -137,7 +137,6 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Ringkasan Hari Ini</CardTitle>
-            <CardDescription>Data diambil langsung dari RTDB attendance.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-slate-600">
             <p>

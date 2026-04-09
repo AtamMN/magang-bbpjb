@@ -5,6 +5,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { PasswordInput } from "@/components/PasswordInput";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import useUserInfo from "@/hooks/useUserInfo";
+import { auth } from "@/lib/firebase/firebase";
 import type { AccountRecord, UserRoleType } from "@/types/auth";
 import { toast } from "sonner";
 
@@ -56,6 +57,19 @@ export default function AccountsTable() {
     nextRole: UserRoleType;
   } | null>(null);
   const [changingRole, setChangingRole] = useState(false);
+
+  const buildAuthorizedHeaders = async () => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    const token = await auth?.currentUser?.getIdToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
+  };
 
   const canManage = userRole?.role === "sadmin";
   const isTrialUser = (currentUser?.email || "").toLowerCase() === "trial@trial.com";
@@ -127,7 +141,7 @@ export default function AccountsTable() {
     try {
       const response = await fetch("/api/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await buildAuthorizedHeaders(),
         body: JSON.stringify({
           name: registerForm.name,
           email: registerForm.email,
@@ -166,7 +180,7 @@ export default function AccountsTable() {
       if (editForm.email !== editingAccount.email) {
         const response = await fetch("/api/admin/update-email", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: await buildAuthorizedHeaders(),
           body: JSON.stringify({ uid: editingAccount.id, newEmail: editForm.email }),
         });
 
@@ -179,7 +193,7 @@ export default function AccountsTable() {
       if (editForm.password.trim()) {
         const response = await fetch("/api/admin/update-password", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: await buildAuthorizedHeaders(),
           body: JSON.stringify({ uid: editingAccount.id, newPassword: editForm.password.trim() }),
         });
 
