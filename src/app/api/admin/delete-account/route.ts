@@ -10,6 +10,15 @@ export async function POST(req: Request) {
     return access.response;
   }
 
+  const database = adminDb;
+  const authClient = adminAuth;
+  if (!database) {
+    return NextResponse.json(
+      { error: "Firebase admin belum dikonfigurasi." },
+      { status: 503 },
+    );
+  }
+
   try {
     const body = (await req.json()) as { uid?: string };
     const uid = body.uid?.trim();
@@ -23,11 +32,11 @@ export async function POST(req: Request) {
       updates[`accounts/${bucket}/${uid}`] = null;
     }
 
-    await adminDb.ref().update(updates);
+    await database.ref().update(updates);
 
-    if (adminAuth) {
+    if (authClient) {
       try {
-        await adminAuth.deleteUser(uid);
+        await authClient.deleteUser(uid);
       } catch (error) {
         console.warn("Delete user auth skipped:", error);
       }

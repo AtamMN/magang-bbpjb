@@ -8,6 +8,14 @@ export async function POST(req: Request) {
     return access.response;
   }
 
+  const authClient = adminAuth;
+  if (!authClient) {
+    return NextResponse.json(
+      { error: "Firebase admin belum dikonfigurasi." },
+      { status: 503 },
+    );
+  }
+
   try {
     const body = (await req.json()) as {
       uid: string;
@@ -18,7 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "uid dan newPassword wajib diisi." }, { status: 400 });
     }
 
-    await adminAuth.updateUser(body.uid, { password: body.newPassword });
+    await authClient.updateUser(body.uid, { password: body.newPassword });
 
     return NextResponse.json({ success: true });
   } catch (error) {

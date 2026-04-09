@@ -8,6 +8,15 @@ export async function POST(req: Request) {
     return access.response;
   }
 
+  const authClient = adminAuth;
+  const database = adminDb;
+  if (!authClient || !database) {
+    return NextResponse.json(
+      { error: "Firebase admin belum dikonfigurasi." },
+      { status: 503 },
+    );
+  }
+
   try {
     const body = (await req.json()) as {
       uid: string;
@@ -18,8 +27,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "uid dan newEmail wajib diisi." }, { status: 400 });
     }
 
-    await adminAuth.updateUser(body.uid, { email: body.newEmail });
-    await adminDb.ref(`accounts/users/${body.uid}/email`).set(body.newEmail);
+    await authClient.updateUser(body.uid, { email: body.newEmail });
+    await database.ref(`accounts/users/${body.uid}/email`).set(body.newEmail);
 
     return NextResponse.json({ success: true });
   } catch (error) {
