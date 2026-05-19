@@ -3,7 +3,7 @@ import { adminAuth } from "@/lib/firebase/firebaseAdmin";
 import { requireAuthorizedRole } from "@/lib/server/requireAuthorizedRole";
 
 export async function POST(req: Request) {
-  const access = await requireAuthorizedRole(req, ["sadmin"]);
+  const access = await requireAuthorizedRole(req, ["sadmin", "admin"]);
   if (!access.ok) {
     return access.response;
   }
