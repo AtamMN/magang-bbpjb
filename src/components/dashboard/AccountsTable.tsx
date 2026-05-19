@@ -58,6 +58,9 @@ export default function AccountsTable() {
   } | null>(null);
   const [changingRole, setChangingRole] = useState(false);
 
+  const [deleteAction, setDeleteAction] = useState<"soft_delete" | "permanent_delete">("soft_delete");
+  const [restoring, setRestoring] = useState(false);
+
   const buildAuthorizedHeaders = async () => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -71,12 +74,13 @@ export default function AccountsTable() {
     return headers;
   };
 
-  const canManage = userRole?.role === "sadmin";
+  const isSadmin = userRole?.role === "sadmin";
+  const canManage = ["sadmin", "admin"].includes(userRole?.role || "");
   const isTrialUser = (currentUser?.email || "").toLowerCase() === "trial@trial.com";
 
   /**
    * Calculate available roles based on current user's role
-   * Sadmin: all roles, Admin: admin/user/intern/mentor
+   * Sadmin: admin/user, Admin: admin/user
    */
   const availableRoles = useMemo(() => {
     if (!userRole) {
@@ -84,23 +88,28 @@ export default function AccountsTable() {
     }
 
     if (userRole.role === "sadmin") {
-      return ["sadmin", "admin", "user", "intern", "mentor"] as UserRoleType[];
+      return ["sadmin", "admin", "user"] as UserRoleType[];
     }
 
     if (userRole.role === "admin") {
-      return ["admin", "user", "intern", "mentor"] as UserRoleType[];
+      return ["admin", "user"] as UserRoleType[];
     }
 
     return [];
   }, [userRole]);
 
   const filteredAccounts = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) {
-      return allAccounts;
+    let source = allAccounts;
+    if (!isSadmin) {
+      source = allAccounts.filter(acc => !acc.isDeleted);
     }
 
-    return allAccounts.filter((account) => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) {
+      return source;
+    }
+
+    return source.filter((account) => {
       const searchable = [account.name, account.email, account.role]
         .join(" ")
         .toLowerCase();
@@ -237,6 +246,18 @@ export default function AccountsTable() {
     }
   };
 
+  const handleRestore = async (account: AccountRecord) => {
+    setRestoring(true);
+    try {
+      await deleteAccount(account.id, "restore");
+      toast.success("Akun berhasil di-restore.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal me-restore akun.");
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deletingAccount) {
       return;
@@ -244,8 +265,8 @@ export default function AccountsTable() {
 
     setDeleting(true);
     try {
-      await deleteAccount(deletingAccount.id);
-      toast.success("Akun berhasil dihapus.");
+      await deleteAccount(deletingAccount.id, deleteAction);
+      toast.success(deleteAction === "permanent_delete" ? "Akun berhasil dihapus permanen." : "Akun berhasil dinonaktifkan.");
       setDeleteOpen(false);
       setDeletingAccount(null);
     } catch (error) {
@@ -338,6 +359,11 @@ export default function AccountsTable() {
                           {isCurrentUser ? (
                             <span className="ml-2 text-xs text-slate-500">(Anda)</span>
                           ) : null}
+                          {account.isDeleted ? (
+                            <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+                              Terhapus
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-3 py-3 text-slate-700">
                           {isTrialUser ? "***@***" : account.email}
@@ -345,7 +371,7 @@ export default function AccountsTable() {
                         <td className="px-3 py-3 text-slate-700">
                           <select
                             value={account.role}
-                            disabled={!canManage || isSadminAccount || isTrialUser}
+                            disabled={!canManage || isSadminAccount || isTrialUser || Boolean(account.isDeleted)}
                             onChange={(event) => {
                               const nextRole = event.target.value as UserRoleType;
                               if (nextRole === account.role) {
@@ -370,25 +396,52 @@ export default function AccountsTable() {
                         <td className="px-3 py-3">
                           <div className="flex flex-wrap gap-2">
                             {canManage && !isSadminAccount ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleOpenEdit(account)}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => {
-                                    setDeletingAccount(account);
-                                    setDeleteOpen(true);
-                                  }}
-                                >
-                                  Hapus
-                                </Button>
-                              </>
+                              account.isDeleted ? (
+                                isSadmin ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleRestore(account)}
+                                      disabled={restoring}
+                                    >
+                                      Restore
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => {
+                                        setDeletingAccount(account);
+                                        setDeleteAction("permanent_delete");
+                                        setDeleteOpen(true);
+                                      }}
+                                    >
+                                      Hapus Permanen
+                                    </Button>
+                                  </>
+                                ) : null
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenEdit(account)}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setDeletingAccount(account);
+                                      setDeleteAction("soft_delete");
+                                      setDeleteOpen(true);
+                                    }}
+                                  >
+                                    Hapus
+                                  </Button>
+                                </>
+                              )
                             ) : (
                               <span className="text-xs text-slate-500">Read-only</span>
                             )}
@@ -569,7 +622,7 @@ export default function AccountsTable() {
             setDeletingAccount(null);
           }
         }}
-        title="Hapus Akun"
+        title={deleteAction === "permanent_delete" ? "Hapus Permanen Akun" : "Hapus Akun"}
         actions={
           <>
             <Button
@@ -584,13 +637,16 @@ export default function AccountsTable() {
               Batal
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete} isLoading={deleting}>
-              Hapus
+              {deleteAction === "permanent_delete" ? "Hapus Permanen" : "Hapus"}
             </Button>
           </>
         }
       >
         <p className="text-sm text-slate-700">
-          Anda yakin ingin menghapus akun <strong>{deletingAccount?.name || "-"}</strong>?
+          {deleteAction === "permanent_delete" 
+            ? `Anda yakin ingin menghapus permanen akun ${deletingAccount?.name || "-"}? Data tidak dapat dipulihkan.`
+            : `Anda yakin ingin menonaktifkan akun ${deletingAccount?.name || "-"}?`
+          }
         </p>
       </SimpleModal>
 
