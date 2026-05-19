@@ -115,9 +115,11 @@ export default function DashboardPage() {
             <CardDescription>Gunakan menu ini untuk akses fitur utama presensi.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
-            <Link href="/scanQR">
-              <Button>Mulai Scan QR</Button>
-            </Link>
+            {userRole?.role !== "admin" ? (
+              <Link href="/scanQR">
+                <Button>Mulai Scan QR</Button>
+              </Link>
+            ) : null}
             <Link href="/dashboard/presensi">
               <Button variant="outline">Lihat Rekap Presensi</Button>
             </Link>

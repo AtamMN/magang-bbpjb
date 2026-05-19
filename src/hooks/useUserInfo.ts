@@ -209,11 +209,7 @@ export default function useUserInfo(currentUser: AppUser | null) {
   }
 
   async function updateRole(accountId: string, newRole: UserRoleType, currentUserRole?: UserRoleType) {
-    if (!db) {
-      throw new Error("Database belum dikonfigurasi.");
-    }
-
-    // Validate permission if currentUserRole is provided
+    // UI-level validation (optional, backend also validates)
     if (currentUserRole && !canChangeRoleTo(currentUserRole, newRole)) {
       throw new Error(
         currentUserRole === "admin"
@@ -222,24 +218,7 @@ export default function useUserInfo(currentUser: AppUser | null) {
       );
     }
 
-    const account = await resolveAccountById(accountId);
-    if (!account) {
-      throw new Error("Akun tidak ditemukan.");
-    }
-
-    const targetBucket = ROLE_TO_BUCKET[newRole];
-    const payload = {
-      name: account.name,
-      email: account.email,
-      role: newRole,
-      createdAt: account.createdAt || Date.now(),
-    };
-
-    await set(ref(db, `accounts/${targetBucket}/${accountId}`), payload);
-
-    if (targetBucket !== account.bucket) {
-      await remove(ref(db, `accounts/${account.bucket}/${accountId}`));
-    }
+    return updateAccount(accountId, { role: newRole });
   }
 
   async function updateAccount(
@@ -250,23 +229,16 @@ export default function useUserInfo(currentUser: AppUser | null) {
       throw new Error("Database belum dikonfigurasi.");
     }
 
-    const account = await resolveAccountById(accountId);
-    if (!account) {
-      throw new Error("Akun tidak ditemukan.");
+    const response = await fetch("/api/admin/update-account", {
+      method: "POST",
+      headers: await buildAuthorizedHeaders(),
+      body: JSON.stringify({ uid: accountId, data: updatedData }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Gagal memperbarui akun.");
     }
-
-    const nextRole = updatedData.role || account.role;
-    if (nextRole !== account.role) {
-      await updateRole(accountId, nextRole);
-    }
-
-    const targetBucket = ROLE_TO_BUCKET[nextRole];
-    const payload: Record<string, unknown> = {
-      ...updatedData,
-      role: nextRole,
-    };
-
-    await update(ref(db, `accounts/${targetBucket}/${accountId}`), payload);
   }
 
   async function deleteAccount(accountId: string, action: "soft_delete" | "permanent_delete" | "restore" = "soft_delete") {
