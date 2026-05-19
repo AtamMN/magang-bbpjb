@@ -67,6 +67,7 @@ interface RawAccountData {
   email?: string;
   role?: string;
   createdAt?: number;
+  isDeleted?: boolean;
 }
 
 function normalizeRole(role: string | undefined, fallbackRole: UserRoleType): UserRoleType {
@@ -82,7 +83,7 @@ function normalizeRole(role: string | undefined, fallbackRole: UserRoleType): Us
   return fallbackRole;
 }
 
-function flattenAccounts(
+export function flattenAccounts(
   accountsData: Record<string, Record<string, RawAccountData>>,
 ): AccountRecord[] {
   const accountMap = new Map<string, AccountRecord>();
@@ -105,6 +106,7 @@ function flattenAccounts(
         email: String(account.email || "-"),
         role: normalizeRole(account.role, roleCollection.role),
         createdAt: account.createdAt,
+        isDeleted: Boolean(account.isDeleted),
       });
     }
   }
@@ -267,7 +269,7 @@ export default function useUserInfo(currentUser: AppUser | null) {
     await update(ref(db, `accounts/${targetBucket}/${accountId}`), payload);
   }
 
-  async function deleteAccount(accountId: string) {
+  async function deleteAccount(accountId: string, action: "soft_delete" | "permanent_delete" | "restore" = "soft_delete") {
     if (!db) {
       throw new Error("Database belum dikonfigurasi.");
     }
@@ -276,7 +278,7 @@ export default function useUserInfo(currentUser: AppUser | null) {
       const response = await fetch("/api/admin/delete-account", {
         method: "POST",
         headers: await buildAuthorizedHeaders(),
-        body: JSON.stringify({ uid: accountId }),
+        body: JSON.stringify({ uid: accountId, action }),
       });
 
       if (response.ok) {

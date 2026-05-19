@@ -25,4 +25,5 @@ export interface AccountRecord {
   email: string;
   role: UserRoleType;
   createdAt?: number;
+  isDeleted?: boolean;
 }
