@@ -16,6 +16,7 @@ import {
 } from "firebase/auth";
 import { get, ref } from "firebase/database";
 import { auth, db, hasFirebaseConfig } from "@/lib/firebase/firebase";
+import { logger } from "@/lib/logger";
 import type { AppUser, RoleInfo, UserRoleType } from "@/types/auth";
 
 interface AuthContextValue {
@@ -70,29 +71,29 @@ async function checkUserRole(email: string): Promise<RoleInfo | null> {
   }
 
   const normalizedEmail = normalizeEmail(email);
-  console.log("[AuthContext] Checking role for email:", normalizedEmail);
+  logger.debug("[AuthContext] Checking role for email:", normalizedEmail);
 
   for (const roleCollection of ROLE_COLLECTIONS) {
     const roleRef = ref(db, `accounts/${roleCollection.key}`);
     const snapshot = await get(roleRef);
 
     if (!snapshot.exists()) {
-      console.log(`[AuthContext] No data in accounts/${roleCollection.key}`);
+      logger.debug(`[AuthContext] No data in accounts/${roleCollection.key}`);
       continue;
     }
 
     const roleData = snapshot.val() as Record<string, Record<string, unknown>>;
-    console.log(`[AuthContext] Found data in accounts/${roleCollection.key}:`, Object.keys(roleData));
+    logger.debug(`[AuthContext] Found data in accounts/${roleCollection.key}:`, Object.keys(roleData));
 
     const matched = Object.values(roleData).find((candidate) => {
       const candidateEmail = normalizeEmail(candidate.email);
-      console.log(`[AuthContext] Comparing ${candidateEmail} === ${normalizedEmail}`);
+      logger.debug(`[AuthContext] Comparing ${candidateEmail} === ${normalizedEmail}`);
       return candidateEmail === normalizedEmail;
     });
 
     if (matched) {
       const resolvedRole = normalizeRole(matched.role, roleCollection.role);
-      console.log("[AuthContext] Found match! Resolved role:", resolvedRole, "Raw matched data:", matched);
+      logger.debug("[AuthContext] Found match! Resolved role:", resolvedRole, "Raw matched data:", matched);
       return {
         role: resolvedRole,
         roleData: matched,
@@ -100,7 +101,7 @@ async function checkUserRole(email: string): Promise<RoleInfo | null> {
     }
   }
 
-  console.log("[AuthContext] No role match found for email:", normalizedEmail);
+  logger.debug("[AuthContext] No role match found for email:", normalizedEmail);
   return null;
 }
 
@@ -149,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser({ uid: user.uid, email: user.email, displayName: user.displayName || undefined });
         setUserRole(roleInfo);
       } catch (error) {
-        console.error("Role resolution failed:", error);
+        logger.error("Role resolution failed:", error);
         setCurrentUser({ uid: user.uid, email: user.email, displayName: user.displayName || undefined });
         setUserRole(null);
       } finally {
@@ -166,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signInWithEmailAndPassword(auth, email, password);
         return { ok: true };
       } catch (error) {
-        console.error("Login failed:", error);
+        logger.error("Login failed:", error);
         return { ok: false, message: "Email atau password tidak valid." };
       }
     }

@@ -1,5 +1,6 @@
 import { get, ref, remove, update } from "firebase/database";
 import { db } from "@/lib/firebase/firebase";
+import { logger } from "@/lib/logger";
 import { formatTime, toWIBDateKey } from "@/lib/utils";
 
 export interface AttendanceRecord {
@@ -65,7 +66,7 @@ export async function checkTodayAttendance(userId: string): Promise<{
 
     return { exists: false, data: null };
   } catch (error) {
-    console.error("Error checking attendance:", error);
+    logger.error("Error checking attendance:", error);
     return { exists: false, data: null, reason: "Gagal membaca data presensi." };
   }
 }
@@ -111,7 +112,7 @@ export async function saveAttendance(
       timestamp,
     };
   } catch (error) {
-    console.error("Error saving attendance:", error);
+    logger.error("Error saving attendance:", error);
     return {
       success: false,
       reason: "Gagal menyimpan presensi.",
@@ -133,7 +134,7 @@ export async function updateAttendanceRecord(
     await update(attendanceRef, payload);
     return { success: true };
   } catch (error) {
-    console.error("Error updating attendance:", error);
+    logger.error("Error updating attendance:", error);
     return { success: false, reason: "Gagal memperbarui data presensi." };
   }
 }
@@ -150,7 +151,7 @@ export async function deleteAttendanceRecord(
     await remove(ref(db, `attendance/${userId}/${date}`));
     return { success: true };
   } catch (error) {
-    console.error("Error deleting attendance:", error);
+    logger.error("Error deleting attendance:", error);
     return { success: false, reason: "Gagal menghapus data presensi." };
   }
 }

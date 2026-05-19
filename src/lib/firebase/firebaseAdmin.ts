@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+import { logger } from "@/lib/logger";
 
 let adminDb: admin.database.Database | null = null;
 let adminAuth: admin.auth.Auth | null = null;
@@ -38,14 +39,14 @@ if (!admin.apps.length) {
         databaseURL:
           process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "",
       });
-      console.log("[Firebase Admin] Initialized successfully");
+      logger.info("[Firebase Admin] Initialized successfully");
     } else {
-      console.warn(
+      logger.warn(
         "[Firebase Admin] Skipped: No service account credentials provided. Set FIREBASE_SERVICE_ACCOUNT or individual FIREBASE_* env vars.",
       );
     }
   } catch (error) {
-    console.error("[Firebase Admin] Initialization failed:", error);
+    logger.error("[Firebase Admin] Initialization failed:", error);
   }
 }
 

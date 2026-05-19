@@ -6,6 +6,7 @@ import {
   type Auth,
 } from "firebase/auth";
 import { getDatabase, type Database } from "firebase/database";
+import { logger } from "@/lib/logger";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -37,7 +38,7 @@ if (hasFirebaseConfig) {
 
   if (typeof window !== "undefined") {
     setPersistence(auth, browserSessionPersistence).catch((error) => {
-      console.error("Failed to set session persistence:", error);
+      logger.error("Failed to set session persistence:", error);
     });
   }
 }
